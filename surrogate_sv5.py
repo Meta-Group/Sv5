@@ -204,7 +204,7 @@ def minimizing(model_regressor, features, plot, log, seed):
     log.columns = ["MAE", "MSE", "RMSE", "R2", "ACC", "seed", "algorithm"]
     log.to_csv(PATH+"log_05_07_2023.csv", mode='a', index=False, header=False)
 
-def minimizing_logging(model_regressor, features, sil_ini, dbs_max, dist_s_d, seed, dist, qtd, run):
+def minimizing_logging(model_regressor, features, sil_ini, dbs_max, dist_s_d, seed, dist, qtd, run, progress):
   datasets = run_exp(model_regressor, features)
   x = pd.DataFrame(datasets)
   x.columns = ["Dataset", "Algorithm", "sil", "dbs", "k_candidate", "k_expected", "yhat"]
@@ -253,7 +253,8 @@ def minimizing_logging(model_regressor, features, sil_ini, dbs_max, dist_s_d, se
              "RMSE": rmse,
              "R2": r2,
              "ACC": acc,
-             "STD all clusterers": std
+             "STD all clusterers": std,
+             "Progress":progress
              })
 
 """## benchmarking datasets and features"""
@@ -402,10 +403,10 @@ for index, combination in enumerate(all_combinations):
 
   run = wandb.init(project="Surrogate_Sv5", entity="barbonjr", reinit=True, name=str(seed)+"_"+str(sil_ini)+"_"+str(dbs_max)+"_"+str(dist_s_d))
 
-  minimizing_logging(model_regressor, features, sil_ini, dbs_max, dist_s_d, seed, dist, df_surrogate.shape[0], run)
+  minimizing_logging(model_regressor, features, sil_ini, dbs_max, dist_s_d, seed, dist, df_surrogate.shape[0], run, progress)
 
   ### WANDB
-  run.log({"Progress": progress})
+  #run.log({"Progress": progress})
   run.finish()
   ### WANDB
 
