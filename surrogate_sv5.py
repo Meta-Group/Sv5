@@ -252,6 +252,7 @@ def minimizing_logging(model_regressor, features, sil_ini, dbs_max, dist_s_d, se
              "MSE": mse,
              "RMSE": rmse,
              "R2": r2,
+             "ACC": acc,
              "STD all clusterers": std
              })
 
