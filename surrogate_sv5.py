@@ -398,7 +398,7 @@ for index, combination in enumerate(all_combinations):
   data = df_surrogate
   x_train, y_train = data.values[:, :-1], data.values[:, -1]
 
-  model_regressor = regressor(random_state=seed)
+  model_regressor = regressor(random_state=seed, n_estimators=250, n_jobs=-1)
   model_regressor.fit(x_train, y_train)
 
   run = wandb.init(project="Surrogate_Sv5", entity="barbonjr", reinit=True, name=str(seed)+"_"+str(sil_ini)+"_"+str(dbs_max)+"_"+str(dist_s_d))
