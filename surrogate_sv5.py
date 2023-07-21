@@ -54,13 +54,19 @@ par_ini = sys.argv[2]
 par_fin = sys.argv[3]
 
 
-sil_ini_list = np.arange(0.2, 0.5, 0.1)
-dbs_max_list = np.arange(0.3, 0.7, 0.1)
-dist_sil_dbs_list = np.arange(0.2, 0.4, 0.1)
+sil_ini_list = np.arange(0.2, 0.6, 0.1)
+dbs_max_list = np.arange(0.3, 0.8, 0.1)
+dist_sil_dbs_list = np.arange(0.2, 0.5, 0.1)
+
+#sil_ini_list = [0.2]
+#dbs_max_list = [0.6]
+#dist_sil_dbs_list = [0.3]
+
 seed_list = range(int(par_ini),int(par_fin))
 distribution_list = [["exponential", 'gumbel', 'normal'], ["exponential", 'normal'], ['gumbel', 'normal']]
+#distribution_list = [["exponential", 'normal']]
 algorithms = [RandomForestRegressor]
-threshold_qtd_on_training = 80
+threshold_qtd_on_training = 50
 
 ###################
 
@@ -294,6 +300,30 @@ features = ['attr_conc.mean','attr_conc.sd','attr_ent.mean',
             'sil', 'dbs', 'clusters', 'cluster_diff'
        ]
 
+features_4bench = ['attr_conc.mean','attr_conc.sd','attr_ent.mean',
+    'attr_ent.sd','attr_to_inst','cohesiveness.mean','cohesiveness.sd',
+    #'cor.mean',#'cor.sd',
+    'cov.mean',#'cov.sd',
+    'eigenvalues.mean','eigenvalues.sd',
+    'inst_to_attr','iq_range.mean','iq_range.sd',
+    #'kurtosis.mean','kurtosis.sd',
+    'mad.mean','mad.sd',
+    #'max.mean','max.sd','mean.mean','mean.sd',
+    'median.mean',
+    'median.sd',#'min.mean','min.sd',
+    'nr_attr','nr_cor_attr','nr_inst','one_itemset.mean',
+    'one_itemset.sd',
+    #'range.mean','range.sd',
+    'sd.mean','sd.sd'
+    #,'skewness.mean', 'skewness.sd'
+    ,'sparsity.mean','sparsity.sd','t2','t3','t4','t_mean.mean',
+    't_mean.sd','two_itemset.mean','two_itemset.sd','var.mean','var.sd',
+    'wg_dist.mean','wg_dist.sd',
+    'sil', 'dbs', 'clusters', 'cluster_diff'
+]
+
+features = features_4bench
+
 """## run optimization"""
 
 
@@ -382,9 +412,14 @@ for index, combination in enumerate(all_combinations):
   print(f"Progress: {progress:.2f}%")
   sil_ini, dbs_max, dist_s_d, seed, dist, regressor = combination
 
+  df_surrogate = df_surrogate.sample(frac=1, replace=True, random_state=1).reset_index(drop=True)
+  df_surrogate = df_surrogate.drop_duplicates(subset=["Dataset"], keep="last")
+
   df_surrogate = filtering_distribution(df_surrogate, dist)
   df_surrogate = filter_sil_bds(df_surrogate, sil_ini, dbs_max)
   df_surrogate = filter_dist_sil_bds(df_surrogate, dist_s_d)
+
+
 
   if(df_surrogate.shape[0]<threshold_qtd_on_training):
     print("Invalid Combination: ",df_surrogate.shape )
@@ -401,7 +436,7 @@ for index, combination in enumerate(all_combinations):
   model_regressor = regressor(random_state=seed, n_estimators=250, n_jobs=-1)
   model_regressor.fit(x_train, y_train)
 
-  run = wandb.init(project="Surrogate_Sv5", entity="barbonjr", reinit=True, name=str(seed)+"_"+str(sil_ini)+"_"+str(dbs_max)+"_"+str(dist_s_d))
+  run = wandb.init(project="Surrogate_Sv5", entity="barbonjr", reinit=True, name="nDpl_"+str(seed)+"_"+str(round(sil_ini,2))+"_"+str(round(dbs_max,2))+"_"+str(round(dist_s_d,2)))
 
   minimizing_logging(model_regressor, features, sil_ini, dbs_max, dist_s_d, seed, dist, df_surrogate.shape[0], run, progress)
 
