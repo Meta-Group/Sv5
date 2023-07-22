@@ -54,20 +54,20 @@ par_ini = sys.argv[2]
 par_fin = sys.argv[3]
 
 
-sil_ini_list = np.arange(0.2, 0.6, 0.1)
-dbs_max_list = np.arange(0.3, 0.8, 0.1)
-dist_sil_dbs_list = np.arange(0.2, 0.5, 0.1)
+#sil_ini_list = np.arange(0.2, 0.6, 0.1)
+#dbs_max_list = np.arange(0.3, 0.8, 0.1)
+#dist_sil_dbs_list = np.arange(0.2, 0.5, 0.1)
 
-#sil_ini_list = [0.2]
-#dbs_max_list = [0.6]
-#dist_sil_dbs_list = [0.3]
+sil_ini_list = [0.2]
+dbs_max_list = [0.6]
+dist_sil_dbs_list = [0.3]
 
 seed_list = range(int(par_ini),int(par_fin))
-distribution_list = [["exponential", 'gumbel', 'normal'], ["exponential", 'normal'], ['gumbel', 'normal']]
-#distribution_list = [["exponential", 'normal']]
+#distribution_list = [["exponential", 'gumbel', 'normal'], ["exponential", 'normal'], ['gumbel', 'normal']]
+distribution_list = [["exponential", 'normal']]
 algorithms = [RandomForestRegressor]
 threshold_qtd_on_training = 50
-
+contamination = [0, 0.05, 0.1, 0.15, 0.2]
 ###################
 
 
@@ -129,13 +129,14 @@ def filter_dist_sil_bds(database_input, dist):
   database_input = database_input[(database_input.dbs-database_input.sil) <= dist]
   return database_input
 
-def filter_samples_isolation(database_input):
-  iso = IsolationForest(contamination=0.5, random_state=1)
-  yhat = iso.fit_predict(database_input._get_numeric_data())
+def filter_samples_isolation(database_input, contamination):
+    if contamination>0:
+        iso = IsolationForest(contamination=contamination, random_state=39)
+        yhat = iso.fit_predict(database_input._get_numeric_data())
 
-  mask = yhat != -1
-  database_input = database_input.iloc[mask, :]
-  return database_input
+        mask = yhat != -1
+        database_input = database_input.iloc[mask, :]
+    return database_input
 
 def plot_train(model):
   results = model.evals_result()
@@ -210,7 +211,7 @@ def minimizing(model_regressor, features, plot, log, seed):
     log.columns = ["MAE", "MSE", "RMSE", "R2", "ACC", "seed", "algorithm"]
     log.to_csv(PATH+"log_05_07_2023.csv", mode='a', index=False, header=False)
 
-def minimizing_logging(model_regressor, features, sil_ini, dbs_max, dist_s_d, seed, dist, qtd, run, progress):
+def minimizing_logging(model_regressor, features, sil_ini, dbs_max, dist_s_d, seed, dist, qtd, run, progress, contamin):
   datasets = run_exp(model_regressor, features)
   x = pd.DataFrame(datasets)
   x.columns = ["Dataset", "Algorithm", "sil", "dbs", "k_candidate", "k_expected", "yhat"]
@@ -236,14 +237,16 @@ def minimizing_logging(model_regressor, features, sil_ini, dbs_max, dist_s_d, se
   std =  np.round(result.yhat.std(),2)
   print("Std Deviation", std)
 
+  contamination = np.round(contamin,2)
+
   #print(result.groupby(['Dataset_x', 'Algorithm'])['k_candidate', 'k_expected'].mean())
   #print(result.groupby(['Dataset_x'])['k_candidate', 'k_expected'].min().reset_index())
   print(result.groupby(['Dataset_x'])[['k_candidate', 'k_expected']]
         .mean())
 
-  log = [mae, mse, rmse, r2, acc, std, type(model_regressor).__name__, seed, sil_ini, dbs_max, dist_s_d, dist, qtd]
+  log = [mae, mse, rmse, r2, acc, std, type(model_regressor).__name__, seed, sil_ini, dbs_max, dist_s_d, dist, qtd, contamination]
   log = pd.DataFrame(log).T
-  log.columns = ["MAE", "MSE", "RMSE", "R2", "ACC",  "STD all clusterers", "algorithm", "seed",  "sil_ini", "dbs_max", "distance_s_d", "distribution", "qtd samples"]
+  log.columns = ["MAE", "MSE", "RMSE", "R2", "ACC",  "STD all clusterers", "algorithm", "seed",  "sil_ini", "dbs_max", "distance_s_d", "distribution", "qtd samples", "contamination"]
   log.to_csv(PATH+LOG_FILE, mode='a', index=False, header=False)
 
   run.log({"model_regressor": "RandomForest",
@@ -260,7 +263,8 @@ def minimizing_logging(model_regressor, features, sil_ini, dbs_max, dist_s_d, se
              "R2": r2,
              "ACC": acc,
              "STD all clusterers": std,
-             "Progress":progress
+             "Progress":progress,
+           "Contamination": contamination,
              })
 
 """## benchmarking datasets and features"""
@@ -401,6 +405,7 @@ def run_exp(model_input, features):
 original = pd.read_csv(PATH+FILE)
 
 combined_lists = [sil_ini_list, dbs_max_list, dist_sil_dbs_list, seed_list, distribution_list, algorithms]
+combined_lists = [sil_ini_list, dbs_max_list, dist_sil_dbs_list, seed_list, distribution_list, algorithms, contamination]
 
 all_combinations = list(itertools.product(*combined_lists))
 
@@ -410,15 +415,16 @@ for index, combination in enumerate(all_combinations):
   progress = (index + 1) / len(all_combinations) * 100
   print("\n\n\n")
   print(f"Progress: {progress:.2f}%")
-  sil_ini, dbs_max, dist_s_d, seed, dist, regressor = combination
+  sil_ini, dbs_max, dist_s_d, seed, dist, regressor, contamin = combination
 
-  df_surrogate = df_surrogate.sample(frac=1, replace=True, random_state=1).reset_index(drop=True)
-  df_surrogate = df_surrogate.drop_duplicates(subset=["Dataset"], keep="last")
+  #df_surrogate = df_surrogate.sample(frac=1, replace=True, random_state=1).reset_index(drop=True)
+  #df_surrogate = df_surrogate.drop_duplicates(subset=["Dataset"], keep="last")
 
   df_surrogate = filtering_distribution(df_surrogate, dist)
   df_surrogate = filter_sil_bds(df_surrogate, sil_ini, dbs_max)
   df_surrogate = filter_dist_sil_bds(df_surrogate, dist_s_d)
 
+  df_surrogate = filter_samples_isolation(df_surrogate, contamin)
 
 
   if(df_surrogate.shape[0]<threshold_qtd_on_training):
@@ -436,9 +442,9 @@ for index, combination in enumerate(all_combinations):
   model_regressor = regressor(random_state=seed, n_estimators=250, n_jobs=-1)
   model_regressor.fit(x_train, y_train)
 
-  run = wandb.init(project="Surrogate_Sv5", entity="barbonjr", reinit=True, name="nDpl_"+str(seed)+"_"+str(round(sil_ini,2))+"_"+str(round(dbs_max,2))+"_"+str(round(dist_s_d,2)))
+  run = wandb.init(project="Surrogate_Sv5", entity="barbonjr", reinit=True, name="OutRem_"+str(round(contamin,2))+"_"+str(seed)+"_"+str(round(sil_ini,2))+"_"+str(round(dbs_max,2))+"_"+str(round(dist_s_d,2)))
 
-  minimizing_logging(model_regressor, features, sil_ini, dbs_max, dist_s_d, seed, dist, df_surrogate.shape[0], run, progress)
+  minimizing_logging(model_regressor, features, sil_ini, dbs_max, dist_s_d, seed, dist, df_surrogate.shape[0], run, progress, contamin)
 
   ### WANDB
   #run.log({"Progress": progress})
