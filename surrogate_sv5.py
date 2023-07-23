@@ -54,20 +54,21 @@ par_ini = sys.argv[2]
 par_fin = sys.argv[3]
 
 
-#sil_ini_list = np.arange(0.2, 0.6, 0.1)
-#dbs_max_list = np.arange(0.3, 0.8, 0.1)
-#dist_sil_dbs_list = np.arange(0.2, 0.5, 0.1)
+sil_ini_list = np.arange(0.2, 0.6, 0.05)
+dbs_max_list = np.arange(0.4, 0.8, 0.1)
+dist_sil_dbs_list = np.arange(0.15, 0.35, 0.05)
 
-sil_ini_list = [0.2]
-dbs_max_list = [0.6]
-dist_sil_dbs_list = [0.3]
+#sil_ini_list = [0.2]
+#dbs_max_list = [0.6]
+#dist_sil_dbs_list = [0.3]
 
 seed_list = range(int(par_ini),int(par_fin))
-#distribution_list = [["exponential", 'gumbel', 'normal'], ["exponential", 'normal'], ['gumbel', 'normal']]
-distribution_list = [["exponential", 'normal']]
+distribution_list = [["exponential", 'gumbel', 'normal'], ["exponential", 'normal'], ['gumbel', 'normal']]
+#distribution_list = [["exponential", 'normal']]
 algorithms = [RandomForestRegressor]
+qtd_arvores = [100,250]
 threshold_qtd_on_training = 50
-contamination = [0, 0.05, 0.1, 0.15, 0.2]
+contamination = [0, 0.05, 0.1, 0.15]
 ###################
 
 
@@ -175,7 +176,7 @@ def plot_optimization(x, best_k):
     ax.set_title(i)
 
 def minimizing(model_regressor, features, plot, log, seed):
-  datasets = run_exp(model_regressor, features)
+  datasets = run_exp(model_regressor, features, datasets_selected_benchmarking)
   x = pd.DataFrame(datasets)
   x.columns = ["Dataset", "Algorithm", "sil", "dbs", "k_candidate", "k_expected", "yhat"]
   x['yhat'] = x.apply(lambda row: row.yhat[0], axis=1)
@@ -211,8 +212,8 @@ def minimizing(model_regressor, features, plot, log, seed):
     log.columns = ["MAE", "MSE", "RMSE", "R2", "ACC", "seed", "algorithm"]
     log.to_csv(PATH+"log_05_07_2023.csv", mode='a', index=False, header=False)
 
-def minimizing_logging(model_regressor, features, sil_ini, dbs_max, dist_s_d, seed, dist, qtd, run, progress, contamin):
-  datasets = run_exp(model_regressor, features)
+def minimizing_logging(model_regressor, features, sil_ini, dbs_max, dist_s_d, seed, dist, qtd, run, progress, contamin, qtd_arvores):
+  datasets = run_exp(model_regressor, features, datasets_selected_benchmarking)
   x = pd.DataFrame(datasets)
   x.columns = ["Dataset", "Algorithm", "sil", "dbs", "k_candidate", "k_expected", "yhat"]
   x['yhat'] = x.apply(lambda row: row.yhat[0], axis=1)
@@ -244,9 +245,9 @@ def minimizing_logging(model_regressor, features, sil_ini, dbs_max, dist_s_d, se
   print(result.groupby(['Dataset_x'])[['k_candidate', 'k_expected']]
         .mean())
 
-  log = [mae, mse, rmse, r2, acc, std, type(model_regressor).__name__, seed, sil_ini, dbs_max, dist_s_d, dist, qtd, contamination]
+  log = [mae, mse, rmse, r2, acc, std, type(model_regressor).__name__, seed, sil_ini, dbs_max, dist_s_d, dist, qtd, contamination, qtd_arvores]
   log = pd.DataFrame(log).T
-  log.columns = ["MAE", "MSE", "RMSE", "R2", "ACC",  "STD all clusterers", "algorithm", "seed",  "sil_ini", "dbs_max", "distance_s_d", "distribution", "qtd samples", "contamination"]
+  log.columns = ["MAE", "MSE", "RMSE", "R2", "ACC",  "STD all clusterers", "algorithm", "seed",  "sil_ini", "dbs_max", "distance_s_d", "distribution", "qtd samples", "contamination", "qtd_arvores"]
   log.to_csv(PATH+LOG_FILE, mode='a', index=False, header=False)
 
   run.log({"model_regressor": "RandomForest",
@@ -265,6 +266,7 @@ def minimizing_logging(model_regressor, features, sil_ini, dbs_max, dist_s_d, se
              "STD all clusterers": std,
              "Progress":progress,
            "Contamination": contamination,
+           "qtd_arvores":qtd_arvores
              })
 
 """## benchmarking datasets and features"""
@@ -273,15 +275,16 @@ datasets_selected_benchmarking = [
                     'a1.csv',
                     'iris.csv',
                     'dim1024.csv', 'dim4.csv', 'dim5.csv', 'dim15.csv',
-                    'dim7.csv', 'dim6.csv', 'dim8.csv', 'dim9.csv',
-                    'dim512.csv', 'dim13.csv', 'dim10.csv', 'dim032.csv', 'dim12.csv', 'dim11.csv', 'dim14.csv',
-                    'dim064.csv', 'dim256.csv', 'dim128.csv', 'dim3.csv',
+                    'dim7.csv', 'dim6.csv',# 'dim8.csv', 'dim9.csv',
+                    #'dim512.csv', 'dim13.csv', 'dim10.csv', 'dim032.csv', 'dim12.csv', 'dim11.csv', 'dim14.csv',
+                    #'dim064.csv', 'dim256.csv',
+                    'dim128.csv', 'dim3.csv',
                     'chainlink.csv',
                     'cancer.csv',
                     #'a2.csv',
                     #'a3.csv',
                     'atom.csv', 'lsun3d.csv', 'hepta.csv', 'engytime.csv',
-                    'target.csv', 'tetra.csv', 'twodiamonds.csv', 'wingnut.csv'
+                    'target.csv', 'tetra.csv', 'twodiamonds.csv'#, 'wingnut.csv'
                     ,'unbalance.csv'
                     ]
 
@@ -331,7 +334,7 @@ features = features_4bench
 """## run optimization"""
 
 
-def run_exp(model_input, features):
+def run_exp(model_input, features, datasets_selected_benchmarking):
 
   features_local = features[:-4]
 
@@ -352,15 +355,15 @@ def run_exp(model_input, features):
   #                     'dim25-clusters2-instances200-overlap1e-06-1e-05-aspectref1.5-aspectmaxmin1-radius1-imbalance1-rep1.csv',
   #                     'dim6-clusters12-instances450-overlap1e-06-1e-05-aspectref1.5-aspectmaxmin3-radius1-imbalance1-rep1.csv']
 
-  datasets_selected = ['dim15.csv','a1.csv','dim9.csv','dim12.csv','dim11.csv','wingnut.csv','unbalance.csv'
-,'twodiamonds.csv','target.csv','tetra.csv','lsun3d.csv','iris.csv'
-,'dim256.csv','dim128.csv','dim064.csv','dim032.csv','dim14.csv'
-,'hepta.csv','dim13.csv','engytime.csv','dim10.csv','dim6.csv','dim5.csv'
-,'dim3.csv','chainlink.csv','cancer.csv','dim4.csv','atom.csv'
-,'dim7.csv','dim1024.csv','dim8.csv','dim512.csv']
+  #datasets_selected = ['dim15.csv','a1.csv','dim9.csv','dim12.csv','dim11.csv','wingnut.csv','unbalance.csv'
+#,'twodiamonds.csv','target.csv','tetra.csv','lsun3d.csv','iris.csv'
+#,'dim256.csv','dim128.csv','dim064.csv','dim032.csv','dim14.csv'
+#,'hepta.csv','dim13.csv','engytime.csv','dim10.csv','dim6.csv','dim5.csv'
+#,'dim3.csv','chainlink.csv','cancer.csv','dim4.csv','atom.csv'
+#,'dim7.csv','dim1024.csv','dim8.csv','dim512.csv']
 
 
-  #datasets_selected = df_benchmark.Dataset.values
+  datasets_selected = datasets_selected_benchmarking
 
   # Extract all available unsupervised measures
   print("Datasets: ",datasets_selected)
@@ -404,8 +407,8 @@ def run_exp(model_input, features):
 
 original = pd.read_csv(PATH+FILE)
 
-combined_lists = [sil_ini_list, dbs_max_list, dist_sil_dbs_list, seed_list, distribution_list, algorithms]
-combined_lists = [sil_ini_list, dbs_max_list, dist_sil_dbs_list, seed_list, distribution_list, algorithms, contamination]
+#combined_lists = [sil_ini_list, dbs_max_list, dist_sil_dbs_list, seed_list, distribution_list, algorithms]
+combined_lists = [sil_ini_list, dbs_max_list, dist_sil_dbs_list, seed_list, distribution_list, algorithms, contamination, qtd_arvores]
 
 all_combinations = list(itertools.product(*combined_lists))
 
@@ -415,7 +418,7 @@ for index, combination in enumerate(all_combinations):
   progress = (index + 1) / len(all_combinations) * 100
   print("\n\n\n")
   print(f"Progress: {progress:.2f}%")
-  sil_ini, dbs_max, dist_s_d, seed, dist, regressor, contamin = combination
+  sil_ini, dbs_max, dist_s_d, seed, dist, regressor, contamin, qtd_arvores = combination
 
   #df_surrogate = df_surrogate.sample(frac=1, replace=True, random_state=1).reset_index(drop=True)
   #df_surrogate = df_surrogate.drop_duplicates(subset=["Dataset"], keep="last")
@@ -439,12 +442,12 @@ for index, combination in enumerate(all_combinations):
   data = df_surrogate
   x_train, y_train = data.values[:, :-1], data.values[:, -1]
 
-  model_regressor = regressor(random_state=seed, n_estimators=250, n_jobs=-1)
+  model_regressor = regressor(random_state=seed, n_estimators=qtd_arvores, n_jobs=-1)
   model_regressor.fit(x_train, y_train)
 
-  run = wandb.init(project="Surrogate_Sv5", entity="barbonjr", reinit=True, name="OutRem_"+str(round(contamin,2))+"_"+str(seed)+"_"+str(round(sil_ini,2))+"_"+str(round(dbs_max,2))+"_"+str(round(dist_s_d,2)))
+  run = wandb.init(project="Surrogate_Sv5", entity="barbonjr", reinit=True, name="A_"+str(round(contamin,2))+"_"+str(seed)+"_"+str(round(sil_ini,2))+"_"+str(round(dbs_max,2))+"_"+str(round(dist_s_d,2)))
 
-  minimizing_logging(model_regressor, features, sil_ini, dbs_max, dist_s_d, seed, dist, df_surrogate.shape[0], run, progress, contamin)
+  minimizing_logging(model_regressor, features, sil_ini, dbs_max, dist_s_d, seed, dist, df_surrogate.shape[0], run, progress, contamin, qtd_arvores)
 
   ### WANDB
   #run.log({"Progress": progress})
