@@ -20,7 +20,8 @@ warnings.simplefilter(action='ignore', category=UserWarning)
 # paths
 PATH = os.getcwd()
 VERSION = "Sv5_b"
-FILE = "metadatabase_surrogate_"+VERSION+".csv"
+# FILE = "metadatabase_surrogate_"+VERSION+".csv"
+FILE = "minibatch_problem_space.csv"
 LOG_FILE = "log_13_07_b.csv"
 PROBLEM_FILE = "New_Problem_Benchmarks.csv"
 
@@ -105,16 +106,18 @@ def run_exp(model_input):
   
   validation_set['yhat'] = yhat
   
-  return validation_set.filter(["file_name", "algorithm", "sil", "dbs", "predicted_cluster", "clusters", "yhat"])
+  return validation_set.filter(["file_name", "algorithm", "sil", "dbs", "ari", "predicted_cluster", "clusters", "yhat"])
 
 def minimizing_logging(model_regressor, features, sil_ini, dbs_max, dist_s_d, seed, qtd, run, progress, contamin, qtd_arvores):
   datasets = run_exp(model_regressor)
   x = pd.DataFrame(datasets)
-  x.columns = ["Dataset", "Algorithm", "sil", "dbs", "k_candidate", "k_expected", "yhat"]
+  x.columns = ["Dataset", "Algorithm", "sil", "dbs", "ari", "k_candidate", "k_expected", "yhat"]
   
   min_data = pd.DataFrame(x.groupby(["Dataset"])["yhat"].min().reset_index())
   result = pd.merge(x, min_data, on="yhat").drop_duplicates(subset='Dataset_x', keep="first")
-
+  # TODO - criterio de empate
+  ari = np.round(result.ari.mean(), 2)
+  print("ARI", ari)
   mae = np.round(metrics.mean_absolute_error(result.k_candidate, result.k_expected),2)
   print("MAE",mae)
   mse = np.round(metrics.mean_squared_error(result.k_candidate, result.k_expected),2)
@@ -131,12 +134,12 @@ def minimizing_logging(model_regressor, features, sil_ini, dbs_max, dist_s_d, se
 
   contamination = np.round(contamin,2)
 
-  print(result.groupby(['Dataset_x'])[['k_candidate', 'k_expected']]
+  print(result.groupby(['Dataset_x'])[['ari','k_candidate', 'k_expected']]
         .mean())
 
-  log = [mae, mse, rmse, r2, acc, std, type(model_regressor).__name__, seed, sil_ini, dbs_max, dist_s_d, qtd, contamination, qtd_arvores]
+  log = [mae, mse, rmse, r2, acc, ari, std, type(model_regressor).__name__, seed, sil_ini, dbs_max, dist_s_d, qtd, contamination, qtd_arvores]
   log = pd.DataFrame(log).T
-  log.columns = ["MAE", "MSE", "RMSE", "R2", "ACC",  "STD all clusterers", "algorithm", "seed",  "sil_ini", "dbs_max", "distance_s_d", "qtd samples", "contamination", "qtd_arvores"]
+  log.columns = ["MAE", "MSE", "RMSE", "R2", "ACC", "ARI","STD all clusterers", "algorithm", "seed",  "sil_ini", "dbs_max", "distance_s_d", "qtd samples", "contamination", "qtd_arvores"]
   log.to_csv(f"{PATH}/{LOG_FILE}", mode='a', index=False, header=False)
 
   run["model_regressor"] = "RandomForest"
@@ -151,28 +154,28 @@ def minimizing_logging(model_regressor, features, sil_ini, dbs_max, dist_s_d, se
   run["RMSE"] = rmse
   run["R2"] = r2
   run["ACC"] = acc
+  run["ARI"] = ari
   run["STD all clusterers"] = std
   run["Progress"] = progress
   run["Contamination"] = contamination
   run["qtd_arvores"] = qtd_arvores
 
-# all_combinations = all_combinations[:3]
+all_combinations = all_combinations[:3]
 for index, combination in enumerate(all_combinations):
     run = neptune.init_run(
-        project="MaleLab/SV5validation",
+        project="MaleLab/SV5minibatch",
         api_token="eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vYXBwLm5lcHR1bmUuYWkiLCJhcGlfdXJsIjoiaHR0cHM6Ly9hcHAubmVwdHVuZS5haSIsImFwaV9rZXkiOiIwODNjNDRiNS02MDM4LTQ2NGEtYWQwMC00OGRhYjcwODc0ZDIifQ==",
     )
     df_surrogate = original
     progress = (index + 1) / len(all_combinations) * 100
     print("\n\n\n")
     print(f"Progress: {progress:.2f}%")
-    # run['progress'] = round(progress,2)
+    run['progress'] = round(progress,2)
     sil_ini, dbs_max, dist_s_d, seed, regressor, contamin, qtd_arvores = combination
     
-    df_surrogate = filter_sil_bds(df_surrogate, sil_ini, dbs_max)
-    df_surrogate = filter_dist_sil_bds(df_surrogate, dist_s_d)
-
-    df_surrogate = filter_samples_isolation(df_surrogate, contamin)
+    # df_surrogate = filter_sil_bds(df_surrogate, sil_ini, dbs_max)
+    # df_surrogate = filter_dist_sil_bds(df_surrogate, dist_s_d)
+    # df_surrogate = filter_samples_isolation(df_surrogate, contamin)
 
 
     if(df_surrogate.shape[0]<threshold_qtd_on_training):
@@ -180,9 +183,8 @@ for index, combination in enumerate(all_combinations):
         continue
     print("Samples", df_surrogate.shape)
 
-    df_surrogate['clusters'] = df_surrogate.apply(lambda row: int(row.Dataset.split('-')[1].replace("clusters","")), axis=1)
-    df_surrogate['predicted_cluster'] = df_surrogate.apply(lambda row: abs(int(row.cluster_diff) - int(row.Dataset.split('-')[1].replace("clusters",""))), axis=1)
-
+    # df_surrogate['clusters'] = df_surrogate.apply(lambda row: int(row.Dataset.split('-')[1].replace("clusters","")), axis=1)
+    
     df_surrogate = df_surrogate[features]
 
     data = df_surrogate
@@ -190,9 +192,10 @@ for index, combination in enumerate(all_combinations):
 
     model_regressor = regressor(random_state=seed, n_estimators=qtd_arvores, n_jobs=-1)
     model_regressor.fit(x_train, y_train)
+    
     # run["name"] = "A_"+str(round(contamin,2))+"_"+str(seed)+"_"+str(round(sil_ini,2))+"_"+str(round(dbs_max,2))+"_"+str(round(dist_s_d,2))
     run["sys/tags"].add("randomsearch")
-    # run = None
+    run = None
     minimizing_logging(model_regressor, features, sil_ini, dbs_max, dist_s_d, seed, df_surrogate.shape[0], run, progress, contamin, qtd_arvores)
 
     run.sync()
