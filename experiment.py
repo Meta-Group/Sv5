@@ -160,7 +160,7 @@ def minimizing_logging(model_regressor, features, sil_ini, dbs_max, dist_s_d, se
   run["Contamination"] = contamination
   run["qtd_arvores"] = qtd_arvores
 
-all_combinations = all_combinations[:3]
+# all_combinations = all_combinations[:3]
 for index, combination in enumerate(all_combinations):
     run = neptune.init_run(
         project="MaleLab/SV5minibatch",
@@ -195,7 +195,7 @@ for index, combination in enumerate(all_combinations):
     
     # run["name"] = "A_"+str(round(contamin,2))+"_"+str(seed)+"_"+str(round(sil_ini,2))+"_"+str(round(dbs_max,2))+"_"+str(round(dist_s_d,2))
     run["sys/tags"].add("randomsearch")
-    run = None
+    # run = None
     minimizing_logging(model_regressor, features, sil_ini, dbs_max, dist_s_d, seed, df_surrogate.shape[0], run, progress, contamin, qtd_arvores)
 
     run.sync()
