@@ -19,9 +19,8 @@ warnings.simplefilter(action='ignore', category=UserWarning)
 
 # paths
 PATH = os.getcwd()
-VERSION = "Sv5_b"
-# FILE = "metadatabase_surrogate_"+VERSION+".csv"
-FILE = "minibatch_problem_space.csv"
+VERSION = "Sv5_minibatches"
+FILE = "metadatabase_surrogate_"+VERSION+".csv"
 LOG_FILE = "log_13_07_b.csv"
 PROBLEM_FILE = "New_Problem_Benchmarks.csv"
 
