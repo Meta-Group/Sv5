@@ -160,42 +160,38 @@ def minimizing_logging(model_regressor, features, sil_ini, dbs_max, dist_s_d, se
   run["qtd_arvores"] = qtd_arvores
 
 
-all_combinations = all_combinations[:3]
 for index, combination in enumerate(all_combinations):
-    run = neptune.init_run(
-        project="MaleLab/SurrogateSelectionML2DAC",
-        api_token="eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vYXBwLm5lcHR1bmUuYWkiLCJhcGlfdXJsIjoiaHR0cHM6Ly9hcHAubmVwdHVuZS5haSIsImFwaV9rZXkiOiIwODNjNDRiNS02MDM4LTQ2NGEtYWQwMC00OGRhYjcwODc0ZDIifQ==",
-    )
+    
     df_surrogate = original
     progress = (index + 1) / len(all_combinations) * 100
-    print("\n\n\n")
-    print(f"Progress: {progress:.2f}%")
-    run['progress'] = round(progress,2)
-    print(f"Total runs {len(all_combinations)}")
+    # print("\n\n\n")
+    # print(f"Progress: {progress:.2f}%")
+    # print(f"Total runs {len(all_combinations)}")
     sil_ini, dbs_max, dist_s_d, seed, regressor, contamin, qtd_arvores = combination
     
     df_surrogate = filter_sil_bds(df_surrogate, sil_ini, dbs_max)
     df_surrogate = filter_dist_sil_bds(df_surrogate, dist_s_d)
 
 
-    if(df_surrogate.shape[0]<threshold_qtd_on_training):
-        print("Invalid Combination: ",df_surrogate.shape )
-        continue
-    print("Samples", df_surrogate.shape)
-    df_surrogate = filter_samples_isolation(df_surrogate, contamin)
+    if(df_surrogate.shape[0]>threshold_qtd_on_training):
+        df_surrogate = filter_samples_isolation(df_surrogate, contamin)
 
-    df_surrogate = df_surrogate[features]
+        df_surrogate = df_surrogate[features]
 
-    data = df_surrogate
-    x_train, y_train = data.values[:, :-1], data.values[:, -1]
+        data = df_surrogate
+        x_train, y_train = data.values[:, :-1], data.values[:, -1]
 
-    model_regressor = regressor(random_state=seed, n_estimators=qtd_arvores, n_jobs=-1)
-    model_regressor.fit(x_train, y_train)
-    
-    # run["name"] = "A_"+str(round(contamin,2))+"_"+str(seed)+"_"+str(round(sil_ini,2))+"_"+str(round(dbs_max,2))+"_"+str(round(dist_s_d,2))
-    run["sys/tags"].add("randomsearch")
-    # run = None
-    minimizing_logging(model_regressor, features, sil_ini, dbs_max, dist_s_d, seed, df_surrogate.shape[0], run, progress, contamin, qtd_arvores)
+        model_regressor = regressor(random_state=seed, n_estimators=qtd_arvores, n_jobs=-1)
+        model_regressor.fit(x_train, y_train)
+        run = neptune.init_run(
+          project="MaleLab/SurrogateSelectionML2DAC",
+          api_token="eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vYXBwLm5lcHR1bmUuYWkiLCJhcGlfdXJsIjoiaHR0cHM6Ly9hcHAubmVwdHVuZS5haSIsImFwaV9rZXkiOiIwODNjNDRiNS02MDM4LTQ2NGEtYWQwMC00OGRhYjcwODc0ZDIifQ==",
+        )    
+        # run["name"] = "A_"+str(round(contamin,2))+"_"+str(seed)+"_"+str(round(sil_ini,2))+"_"+str(round(dbs_max,2))+"_"+str(round(dist_s_d,2))
+        run['progress'] = round(progress,2)
+        run["sys/tags"].add("randomsearch")
+        # run = None
+        minimizing_logging(model_regressor, features, sil_ini, dbs_max, dist_s_d, seed, df_surrogate.shape[0], run, progress, contamin, qtd_arvores)
 
-    run.sync()
-    run.stop()
+        run.sync()
+        run.stop()
