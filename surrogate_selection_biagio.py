@@ -104,13 +104,33 @@ def run_exp(model_input):
 def minimizing_logging(model_regressor, features, sil_ini, dbs_max, dist_s_d, seed, qtd, run, progress, contamin, qtd_arvores):
   datasets = run_exp(model_regressor)
   x = pd.DataFrame(datasets)
-  x.columns = ["Dataset", "Algorithm", "sil", "dbs", "ari", "k_candidate", "k_expected", "yhat"]
   
+  x.columns = ["Dataset", "Algorithm", "sil", "dbs", "ari", "k_candidate", "k_expected", "yhat"]
+  x.to_csv("x.csv", index=None)
+
   min_data = pd.DataFrame(x.groupby(["Dataset"])["yhat"].min().reset_index())
-  result = pd.merge(x, min_data, on="yhat").drop_duplicates(subset='Dataset_x', keep="first")
+  min_data.to_csv("min_data.csv", index=None)
+  
   # TODO - criterio de empate
-  ari = np.round(result.ari.mean(), 2)
-  print("ARI", ari)
+  # result = pd.merge(x, min_data, on="yhat").drop_duplicates(subset='Dataset_x', keep="first")
+  result = pd.merge(x, min_data, on=["Dataset","yhat"])
+  # result.to_csv("result.csv", index=None)
+
+  grouped_stats = result.groupby("Dataset")["ari"].agg(['max','min','mean','median','std','count'])
+  
+  ari_max = np.round(grouped_stats['max'].mean(), 2)
+  print("ARI_max",ari_max)
+  ari_min = np.round(grouped_stats['min'].mean(), 2)
+  print("ARI_min",ari_min)
+  ari_mean = np.round(grouped_stats['mean'].mean(), 2)
+  print("ARI_mean",ari_mean)
+  ari_median = np.round(grouped_stats['median'].mean(), 2)
+  print("ARI_median",ari_median)
+  ari_count = np.round(grouped_stats['count'].mean(), 2)
+  print("ARI_count",ari_count)
+  ari_std = np.round(grouped_stats['std'].dropna().mean(), 2)
+  print("ARI_std",ari_std)
+  
   mae = np.round(metrics.mean_absolute_error(result.k_candidate, result.k_expected),2)
   print("MAE",mae)
   mse = np.round(metrics.mean_squared_error(result.k_candidate, result.k_expected),2)
@@ -127,16 +147,15 @@ def minimizing_logging(model_regressor, features, sil_ini, dbs_max, dist_s_d, se
 
   contamination = np.round(contamin,2)
 
-  print(result.groupby(['Dataset_x'])[['ari','k_candidate', 'k_expected']]
+  print(result.groupby(['Dataset'])[['ari','k_candidate', 'k_expected']]
         .mean())
 
-  log = [mae, mse, rmse, r2, acc, ari, std, type(model_regressor).__name__, seed, sil_ini, dbs_max, dist_s_d, qtd, contamination, qtd_arvores]
+  log = [mae, mse, rmse, r2, acc, ari_max, ari_min, ari_mean, ari_median, ari_count, ari_std, std, type(model_regressor).__name__, seed, sil_ini, dbs_max, dist_s_d, qtd, contamination, qtd_arvores]
   log = pd.DataFrame(log).T
-  log.columns = ["MAE", "MSE", "RMSE", "R2", "ACC", "ARI","STD all clusterers", "algorithm", "seed",  "sil_ini", "dbs_max", "distance_s_d", "qtd samples", "contamination", "qtd_arvores"]
+  log.columns = ["MAE", "MSE", "RMSE", "R2", "ACC", "ARI_max","ARI_min","ARI_mean","ARI_median","ARI_count","ARI_std","STD all clusterers", "algorithm", "seed",  "sil_ini", "dbs_max", "distance_s_d", "qtd samples", "contamination", "qtd_arvores"]
   log.to_csv(f"{PATH}/{LOG_FILE}", mode='a', index=False, header=False)
 
   run["model_regressor"] = "RandomForest"
-  # run["features"] = features
   run["sil_ini"] = sil_ini  # time cost
   run["dbs_max"] = dbs_max  # parsimonly?
   run["dist_s_d"] = dist_s_d
@@ -147,7 +166,12 @@ def minimizing_logging(model_regressor, features, sil_ini, dbs_max, dist_s_d, se
   run["RMSE"] = rmse
   run["R2"] = r2
   run["ACC"] = acc
-  run["ARI"] = ari
+  run["ARI_max"] = ari_max
+  run["ARI_min"] = ari_min
+  run["ARI_mean"] = ari_mean
+  run["ARI_median"] = ari_median
+  run["ARI_count"] = ari_count
+  run["ARI_std"] = ari_std
   run["STD all clusterers"] = std
   run["Progress"] = progress
   run["Contamination"] = contamination
@@ -157,14 +181,13 @@ for index, combination in enumerate(all_combinations):
     
     df_surrogate = original
     progress = (index + 1) / len(all_combinations) * 100
-    # print("\n\n\n")
-    # print(f"Progress: {progress:.2f}%")
-    # print(f"Total runs {len(all_combinations)}")
+    print("\n\n\n")
+    print(f"Progress: {progress:.2f}%")
+    print(f"Total runs {len(all_combinations)}")
     sil_ini, dbs_max, dist_s_d, seed, regressor, contamin, qtd_arvores = combination
     
     df_surrogate = filter_sil_bds(df_surrogate, sil_ini, dbs_max)
     df_surrogate = filter_dist_sil_bds(df_surrogate, dist_s_d)
-
 
     if(df_surrogate.shape[0]>threshold_qtd_on_training):
         df_surrogate = filter_samples_isolation(df_surrogate, contamin)
