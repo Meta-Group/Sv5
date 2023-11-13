@@ -236,7 +236,7 @@ stats.register("std", np.std)
 stats.register("min", np.min)
 stats.register("max", np.max)
 
-for SEED in np.arange(1,20):
+for SEED in np.arange(20,40):
 
     def get_SEED():
         return SEED
@@ -258,7 +258,7 @@ for SEED in np.arange(1,20):
 
     print(best_parameters)
 
-    run["qtd_samples"] = best_parameters[1]
+    #run["qtd_samples"] = best_parameters[1]
     run["attr_sil_max"] = best_parameters[1]
     run["attr_sil_min"] = best_parameters[0]
     run["attr_dbs_max"] = best_parameters[3]
