@@ -143,6 +143,11 @@ def minimizing_logging(model_regressor, sil_min, sil_max, dbs_min, dbs_max, seed
   log.columns = ["MAE", "MSE", "RMSE", "R2", "ACC", "ARI","STD all clusterers", "algorithm", "seed",  "sil_min", "sil_max", "dbs_min", "dbs_max", "qtd samples", "contamination", "qtd_arvores"]
   log.to_csv(f"{PATH}/{LOG_FILE}", mode='a', index=False, header=False)
 
+  run["opt/ARI"].append(ARI)
+  run["opt/R2"].append(r2)
+  run["opt/ACC"].append(acc)
+  run["opt/samples"].append(qtd)
+
   return ari 
 
 def mutate(individual):
