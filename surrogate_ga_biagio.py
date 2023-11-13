@@ -113,24 +113,23 @@ def minimizing_logging(model_regressor, sil_min, sil_max, dbs_min, dbs_max, seed
   min_data = pd.DataFrame(x.groupby(["Dataset"])["yhat"].min().reset_index())
   result = pd.merge(x, min_data, on="yhat").drop_duplicates(subset='Dataset_x', keep="first")
 
-
-  print(" ")
+  #print(" ")
   # TODO - criterio de empate
   ari = np.round(result.ari.mean(), 2)
   print("ARI", ari)
   mae = np.round(metrics.mean_absolute_error(result.k_candidate, result.k_expected),2)
-  print("MAE",mae)
+  #print("MAE",mae)
   mse = np.round(metrics.mean_squared_error(result.k_candidate, result.k_expected),2)
-  print("MSE",mse)
+  #print("MSE",mse)
   rmse = np.round(np.sqrt(mse),2) # or mse**(0.5)
-  print("RMSE",rmse)
+  #print("RMSE",rmse)
   r2 = np.round(metrics.r2_score(result.k_candidate,result.k_expected),2)
   print("R2",r2)
   acc = np.round(metrics.accuracy_score(result.k_candidate,result.k_expected),2)
   print("ACC",acc)
 
   std =  np.round(result.yhat.std(),2)
-  print("Std Deviation", std)
+  #print("Std Deviation", std)
 
   print("QTD samples",qtd)
 
@@ -162,11 +161,11 @@ def mutate(individual):
 
 
 def evaluate(individual):
-    sil_min = individual[0]
-    sil_max = individual[1]
-    dbs_min = individual[2]
-    dbs_max = individual[3]
-    contamination = individual[4]
+    sil_min = np.round(individual[0],2)
+    sil_max = np.round(individual[1],2)
+    dbs_min = np.round(individual[2],2)
+    dbs_max = np.round(individual[3],2)
+    contamination = np.round(individual[4],2)
 
 
     df_surrogate = original
@@ -174,14 +173,14 @@ def evaluate(individual):
 
     x = 0
     if(df_surrogate.shape[0]>threshold_qtd_on_training):
-        df_surrogate = filter_samples_isolation(df_surrogate, individual[4])
+        df_surrogate = filter_samples_isolation(df_surrogate, contamination)
 
         df_surrogate = df_surrogate[features]
 
         data = df_surrogate
         x_train, y_train = data.values[:, :-1], data.values[:, -1]
 
-        model_regressor = RandomForestRegressor(random_state=SEED, n_estimators=100, n_jobs=-1)
+        model_regressor = RandomForestRegressor(random_state=get_SEED(), n_estimators=100, n_jobs=-1)
         model_regressor.fit(x_train, y_train)
         x = minimizing_logging(model_regressor, sil_min, sil_max, dbs_min, dbs_max, get_SEED(), df_surrogate.shape[0], run,  contamination, qtd_arvores)
     return x,
@@ -194,10 +193,10 @@ creator.create("FitnessMax", base.Fitness, weights=(1.0,)) # Maximise the fitnes
 creator.create("Individual", list, fitness=creator.FitnessMax)
 
 # Possible parameter values
-sil_max = 1.0
 sil_min = 0.0
-dbs_max = 3.0
+sil_max = 1.0
 dbs_min = 0.0
+dbs_max = 3.0
 contamination_min = 0
 contamination_max = 0.3 
 
@@ -225,7 +224,7 @@ toolbox.register("evaluate", evaluate)
 
 population_size = 150
 crossover_probability = 0.7
-mutation_probability = 0.1
+mutation_probability = 0.2
 number_of_generations = 30
 
 pop = toolbox.population(n=population_size)
@@ -236,16 +235,17 @@ stats.register("std", np.std)
 stats.register("min", np.min)
 stats.register("max", np.max)
 
-for SEED in np.arange(20,40):
+for SEED in np.arange(25,45):
 
     def get_SEED():
         return SEED
  
-    print(">>>>>>>>>>>>>>>>>>>>",get_SEED())
     run = neptune.init_run(
     project="MaleLab/GASv5Biagio",
     api_token="eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vYXBwLm5lcHR1bmUuYWkiLCJhcGlfdXJsIjoiaHR0cHM6Ly9hcHAubmVwdHVuZS5haSIsImFwaV9rZXkiOiI2YTE5Zjg5NC1mMjk0LTRlN2UtYjgxMC03OTE1ZWJiYjliNTQifQ==",
     )    
+
+    print(">>>>>>>>>>>>>>>>>>>>",get_SEED())
  
     #run["name"] = "GA_seed"+str(SEED)+"_sil_"+str(round(sil_min,2))+"_"+str(sil_max)+"_dbs_"+str(round(dbs_min,2))+"_"+str(round(dbs_max,2))+"_pop_"+str(round(population_size,2)+"_gen_"+str(round(number_of_generations)))
     run["sys/tags"].add("randomsearch")
@@ -258,19 +258,18 @@ for SEED in np.arange(20,40):
 
     print(best_parameters)
 
-    #run["qtd_samples"] = best_parameters[1]
-    run["attr_sil_max"] = best_parameters[1]
+#    run["qtd_samples"] = best_parameters[1]
     run["attr_sil_min"] = best_parameters[0]
+    run["attr_sil_max"] = best_parameters[1]
+    run["attr_dbs_min"] = best_parameters[2]
     run["attr_dbs_max"] = best_parameters[3]
-    run["attr_dbs_min"] = best_parameters[1]
     run["attr_contamination"] = best_parameters[4]
-    run["seed"] = SEED
+    run["seed"] = get_SEED()
     run["population_size"] = population_size
     run["crossover_probability"] = crossover_probability
     run["mutation_probability"] = mutation_probability
     run["number_of_generations"] = number_of_generations
     run["ARI"] = max(log.select("max"))
-
  
     gen = log.select("gen")
     max_ = log.select("max")
