@@ -16,6 +16,7 @@ from sklearn.cluster import AgglomerativeClustering, KMeans, MiniBatchKMeans
 from sklearn_extra.cluster import KMedoids
 import matplotlib.pyplot as plt
 
+from datetime import datetime
 from os import listdir
 from os.path import isfile, join
 import warnings
@@ -26,7 +27,7 @@ warnings.simplefilter(action='ignore', category=UserWarning)
 PATH = os.getcwd()
 VERSION = "Sv5_minibatches"
 FILE = "metadatabase_surrogate_"+VERSION+".csv"
-LOG_FILE = "log_biagio_ga.csv"
+LOG_FILE = "log_biagio_ga_"+datetime.now().strftime("%d%b%Y")+".csv"
 PROBLEM_FILE = "validation_biagio_benchmark.csv"
 SEED = 1
 
@@ -121,17 +122,17 @@ def minimizing_logging(model_regressor, sil_min, sil_max, dbs_min, dbs_max, seed
   grouped_stats = result.groupby("Dataset")["ari"].agg(['max','min','mean','median','std','count'])
   
   ari_max = np.round(grouped_stats['max'].mean(), 2)
-  print("ARI_max",ari_max)
+  #print("ARI_max",ari_max)
   ari_min = np.round(grouped_stats['min'].mean(), 2)
-  print("ARI_min",ari_min)
+  #print("ARI_min",ari_min)
   ari_mean = np.round(grouped_stats['mean'].mean(), 2)
-  print("ARI_mean",ari_mean)
+  #print("ARI_mean",ari_mean)
   ari_median = np.round(grouped_stats['median'].mean(), 2)
-  print("ARI_median",ari_median)
+  #print("ARI_median",ari_median)
   ari_count = np.round(grouped_stats['count'].mean(), 2)
-  print("ARI_count",ari_count)
+  #print("ARI_count",ari_count)
   ari_std = np.round(grouped_stats['std'].dropna().mean(), 2)
-  print("ARI_std",ari_std)
+  #print("ARI_std",ari_std)
 
   mae = np.round(metrics.mean_absolute_error(result.k_candidate, result.k_expected),2)
   #print("MAE",mae)
@@ -219,10 +220,10 @@ creator.create("FitnessMax", base.Fitness, weights=(1.0,)) # Maximise the fitnes
 creator.create("Individual", list, fitness=creator.FitnessMax)
 
 # Possible parameter values
-sil_min = 0.0
 sil_max = 1.0
-dbs_min = 0.0
-dbs_max = 3.0
+sil_min = 0.2
+dbs_max = 2.0
+dbs_min = 0.2
 contamination_min = 0
 contamination_max = 0.3 
 
@@ -240,9 +241,6 @@ toolbox.register("individual", tools.initCycle, creator.Individual,
                   toolbox.attr_contamination), n=N_CYCLES)
 
 toolbox.register("population", tools.initRepeat, list, toolbox.individual)
-
-
-
 toolbox.register("mate", tools.cxOnePoint)
 toolbox.register("mutate",mutate)
 toolbox.register("select", tools.selTournament, tournsize=2)
@@ -251,7 +249,7 @@ toolbox.register("evaluate", evaluate)
 population_size = 150
 crossover_probability = 0.7
 mutation_probability = 0.2
-number_of_generations = 30
+number_of_generations = 35
 
 pop = toolbox.population(n=population_size)
 hof = tools.HallOfFame(1)
@@ -266,15 +264,20 @@ for SEED in np.arange(25,45):
     def get_SEED():
         return SEED
  
-    run = neptune.init_run(
-    project="MaleLab/GASv5Biagio",
-    api_token="eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vYXBwLm5lcHR1bmUuYWkiLCJhcGlfdXJsIjoiaHR0cHM6Ly9hcHAubmVwdHVuZS5haSIsImFwaV9rZXkiOiI2YTE5Zjg5NC1mMjk0LTRlN2UtYjgxMC03OTE1ZWJiYjliNTQifQ==",
+    run = neptune.init_run(custom_run_id="GAPoA_ML2DAC_"+str(get_SEED())+"_"+datetime.now().strftime("%d%b%Y")+".csv",
+        project="MaleLab/GASv5Biagio",
+        api_token="eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vYXBwLm5lcHR1bmUuYWkiLCJhcGlfdXJsIjoiaHR0cHM6Ly9hcHAubmVwdHVuZS5haSIsImFwaV9rZXkiOiIwODNjNDRiNS02MDM4LTQ2NGEtYWQwMC00OGRhYjcwODc0ZDIifQ=="               
     )    
 
     print(">>>>>>>>>>>>>>>>>>>>",get_SEED())
  
-    #run["name"] = "GA_seed"+str(SEED)+"_sil_"+str(round(sil_min,2))+"_"+str(sil_max)+"_dbs_"+str(round(dbs_min,2))+"_"+str(round(dbs_max,2))+"_pop_"+str(round(population_size,2)+"_gen_"+str(round(number_of_generations)))
-    run["sys/tags"].add("randomsearch")
+    #run["name"] = "GA_seed"+str(get_SEED())+"_sil_"+str(round(sil_min,2))+"_"+str(sil_max)+"_dbs_"+str(round(dbs_min,2))+"_"+str(round(dbs_max,2))+"_pop_"+str(round(population_size,2)+"_gen_"+str(round(number_of_generations)))
+    run["sys/tags"].add("ari_median")
+    run["seed"] = get_SEED()
+    run["population_size"] = population_size
+    run["crossover_probability"] = crossover_probability
+    run["mutation_probability"] = mutation_probability
+    run["number_of_generations"] = number_of_generations    
 
     pop, log = deap.algorithms.eaSimple(pop, toolbox, cxpb=crossover_probability, stats = stats, 
                                 mutpb = mutation_probability, ngen=number_of_generations, halloffame=hof, 
@@ -290,12 +293,8 @@ for SEED in np.arange(25,45):
     run["attr_dbs_min"] = np.round(best_parameters[2],2)
     run["attr_dbs_max"] = np.round(best_parameters[3],2)
     run["attr_contamination"] = np.round(best_parameters[4],2)
-    run["seed"] = get_SEED()
-    run["population_size"] = population_size
-    run["crossover_probability"] = crossover_probability
-    run["mutation_probability"] = mutation_probability
-    run["number_of_generations"] = number_of_generations
     run["ARI"] = max(log.select("max"))
+
  
     gen = log.select("gen")
     max_ = log.select("max")
@@ -314,9 +313,9 @@ for SEED in np.arange(25,45):
     plt.plot(evolution['Generation'], evolution['Max X'], 'b', color = 'C3', label= 'Max')
 
     plt.legend(loc = 'lower right')
-    plt.ylabel('ARI (min)')
+    plt.ylabel('ARI')
     plt.xlabel('Generation')
-    plt.xticks([0,5,10,15,20])
+    plt.xticks([0,5,10,15,20,30,40,50])
 
     plt.savefig(PATH+'/parameter_optimization_plot.png') 
     run["GA_CHART"].upload(PATH+'/parameter_optimization_plot.png')
