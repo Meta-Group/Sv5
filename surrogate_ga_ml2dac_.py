@@ -159,7 +159,7 @@ def minimizing_logging(model_regressor, sil_min, sil_max, dbs_min, dbs_max, seed
 
   log = [mae, mse, rmse, r2, acc, ari_max, ari_min, ari_mean, ari_median, ari_count, ari_std, std, type(model_regressor).__name__, seed, sil_min, sil_max, dbs_min, dbs_max, qtd, contamination, qtd_arvores]
   log = pd.DataFrame(log).T
-  log.columns = ["MAE", "MSE", "RMSE", "R2", "ACC", "ARI_max","ARI_min","ARI_mean","ARI_median","ARI_count","ARI_std","STD all clusterers", "algorithm", "seed",  "sil_ini", "dbs_max", "distance_s_d", "qtd samples", "contamination", "qtd_arvores"]
+  log.columns = ["MAE", "MSE", "RMSE", "R2", "ACC", "ARI_max","ARI_min","ARI_mean","ARI_median","ARI_count","ARI_std","STD all clusterers", "algorithm", "seed",  "sil_min", "sil_max", "dbs_min", "dbs_max", "qtd samples", "contamination", "qtd_arvores"]
   log.to_csv(f"{PATH}/{LOG_FILE}", mode='a', index=False, header=False)
 
   run["opt/Contamination"].append(contamination)    
