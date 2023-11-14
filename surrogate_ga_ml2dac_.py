@@ -3,6 +3,9 @@ from deap import creator, base, tools
 from deap import algorithms
 import deap
 
+import hashlib
+import time
+
 import os
 import numpy as np
 from sklearn.ensemble import RandomForestRegressor
@@ -267,7 +270,7 @@ for SEED in np.arange(1,40):
         return SEED
  
     print(">>>>>>>>>>>>>>>>>>",get_SEED())
-    run = neptune.init_run(
+    run = neptune.init_run(custom_run_id="GAPoA_ML2DAC_"+str(get_SEED)+"_"+hashlib.md5(str(time.time()).encode()).hexdigest(),
     project="MaleLab/GASv5ML2DAC",
     api_token="eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vYXBwLm5lcHR1bmUuYWkiLCJhcGlfdXJsIjoiaHR0cHM6Ly9hcHAubmVwdHVuZS5haSIsImFwaV9rZXkiOiI2YTE5Zjg5NC1mMjk0LTRlN2UtYjgxMC03OTE1ZWJiYjliNTQifQ==",
     )    
