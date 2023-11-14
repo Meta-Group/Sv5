@@ -259,7 +259,7 @@ stats.register("std", np.std)
 stats.register("min", np.min)
 stats.register("max", np.max)
 
-for SEED in np.arange(25,45):
+for SEED in np.arange(1,40):
 
     def get_SEED():
         return SEED
