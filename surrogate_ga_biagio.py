@@ -111,12 +111,28 @@ def minimizing_logging(model_regressor, sil_min, sil_max, dbs_min, dbs_max, seed
   x.columns = ["Dataset", "Algorithm", "sil", "dbs", "ari", "k_candidate", "k_expected", "yhat"]
   
   min_data = pd.DataFrame(x.groupby(["Dataset"])["yhat"].min().reset_index())
-  result = pd.merge(x, min_data, on="yhat").drop_duplicates(subset='Dataset_x', keep="first")
-
-  #print(" ")
+  min_data.to_csv("min_data.csv", index=None)
+  
   # TODO - criterio de empate
-  ari = np.round(result.ari.mean(), 2)
-  print("ARI", ari)
+  # result = pd.merge(x, min_data, on="yhat").drop_duplicates(subset='Dataset_x', keep="first")
+  result = pd.merge(x, min_data, on=["Dataset","yhat"])
+  # result.to_csv("result.csv", index=None)
+
+  grouped_stats = result.groupby("Dataset")["ari"].agg(['max','min','mean','median','std','count'])
+  
+  ari_max = np.round(grouped_stats['max'].mean(), 2)
+  print("ARI_max",ari_max)
+  ari_min = np.round(grouped_stats['min'].mean(), 2)
+  print("ARI_min",ari_min)
+  ari_mean = np.round(grouped_stats['mean'].mean(), 2)
+  print("ARI_mean",ari_mean)
+  ari_median = np.round(grouped_stats['median'].mean(), 2)
+  print("ARI_median",ari_median)
+  ari_count = np.round(grouped_stats['count'].mean(), 2)
+  print("ARI_count",ari_count)
+  ari_std = np.round(grouped_stats['std'].dropna().mean(), 2)
+  print("ARI_std",ari_std)
+
   mae = np.round(metrics.mean_absolute_error(result.k_candidate, result.k_expected),2)
   #print("MAE",mae)
   mse = np.round(metrics.mean_squared_error(result.k_candidate, result.k_expected),2)
@@ -138,17 +154,22 @@ def minimizing_logging(model_regressor, sil_min, sil_max, dbs_min, dbs_max, seed
   #print(result.groupby(['Dataset_x'])[['ari','k_candidate', 'k_expected']]
   #      .mean())
 
-  log = [mae, mse, rmse, r2, acc, ari, std, type(model_regressor).__name__, seed, sil_min, sil_max, dbs_min, dbs_max, qtd, contamination, qtd_arvores]
+  log = [mae, mse, rmse, r2, acc, ari_max, ari_min, ari_mean, ari_median, ari_count, ari_std, std, type(model_regressor).__name__, seed, sil_min, sil_max, dbs_min, dbs_max, qtd, contamination, qtd_arvores]
   log = pd.DataFrame(log).T
-  log.columns = ["MAE", "MSE", "RMSE", "R2", "ACC", "ARI","STD all clusterers", "algorithm", "seed",  "sil_min", "sil_max", "dbs_min", "dbs_max", "qtd samples", "contamination", "qtd_arvores"]
+  log.columns = ["MAE", "MSE", "RMSE", "R2", "ACC", "ARI_max","ARI_min","ARI_mean","ARI_median","ARI_count","ARI_std","STD all clusterers", "algorithm", "seed",  "sil_min", "sil_max", "dbs_min", "dbs_max", "qtd samples", "contamination", "qtd_arvores"]
   log.to_csv(f"{PATH}/{LOG_FILE}", mode='a', index=False, header=False)
 
-  run["opt/ARI"].append(ari)
+  run["opt/Contamination"].append(contamination)    
+  run["opt/ARI_mean"].append(ari_mean)
+  run["opt/ARI_max"].append(ari_max)
+  run["opt/ARI_min"].append(ari_min)
+  run["opt/ARI_median"].append(ari_median)
+  run["opt/ARI_count"].append(ari_count)
   run["opt/R2"].append(r2)
   run["opt/ACC"].append(acc)
   run["opt/samples"].append(qtd)
 
-  return ari 
+  return ari_median 
 
 def mutate(individual):
     gene = random.randint(0,9) #select which parameter to mutate
@@ -263,12 +284,12 @@ for SEED in np.arange(25,45):
 
     print(best_parameters)
 
-#    run["qtd_samples"] = best_parameters[1]
-    run["attr_sil_min"] = best_parameters[0]
-    run["attr_sil_max"] = best_parameters[1]
-    run["attr_dbs_min"] = best_parameters[2]
-    run["attr_dbs_max"] = best_parameters[3]
-    run["attr_contamination"] = best_parameters[4]
+    #run["qtd_samples"] = best_parameters[1]
+    run["attr_sil_min"] = np.round(best_parameters[0],2)
+    run["attr_sil_max"] = np.round(best_parameters[1],2)
+    run["attr_dbs_min"] = np.round(best_parameters[2],2)
+    run["attr_dbs_max"] = np.round(best_parameters[3],2)
+    run["attr_contamination"] = np.round(best_parameters[4],2)
     run["seed"] = get_SEED()
     run["population_size"] = population_size
     run["crossover_probability"] = crossover_probability
