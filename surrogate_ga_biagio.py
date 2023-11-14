@@ -264,7 +264,7 @@ for SEED in np.arange(25,45):
     def get_SEED():
         return SEED
  
-    run = neptune.init_run(custom_run_id="GAPoA_ML2DAC_"+str(get_SEED())+"_"+datetime.now().strftime("%d%b%Y")+".csv",
+    run = neptune.init_run(
         project="MaleLab/GASv5Biagio",
         api_token="eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vYXBwLm5lcHR1bmUuYWkiLCJhcGlfdXJsIjoiaHR0cHM6Ly9hcHAubmVwdHVuZS5haSIsImFwaV9rZXkiOiIwODNjNDRiNS02MDM4LTQ2NGEtYWQwMC00OGRhYjcwODc0ZDIifQ=="               
     )    
