@@ -172,7 +172,7 @@ def minimizing_logging(model_regressor, sil_min, sil_max, dbs_min, dbs_max, seed
   run["opt/ACC"].append(acc)
   run["opt/samples"].append(qtd)
 
-  return ari_median 
+  return ari_max 
 
 def mutate(individual):
     gene = random.randint(0,9) #select which parameter to mutate
@@ -273,7 +273,7 @@ for SEED in np.arange(1,40):
     )    
  
     #run["name"] = "GA_seed"+str(SEED)+"_sil_"+str(round(sil_min,2))+"_"+str(sil_max)+"_dbs_"+str(round(dbs_min,2))+"_"+str(round(dbs_max,2))+"_pop_"+str(round(population_size,2)+"_gen_"+str(round(number_of_generations)))
-    run["sys/tags"].add("ari_median")
+    run["sys/tags"].add("ari_max")
     run["seed"] = get_SEED()
     run["population_size"] = population_size
     run["crossover_probability"] = crossover_probability
