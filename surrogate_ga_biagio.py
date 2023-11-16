@@ -170,7 +170,7 @@ def minimizing_logging(model_regressor, sil_min, sil_max, dbs_min, dbs_max, seed
   run["opt/ACC"].append(acc)
   run["opt/samples"].append(qtd)
 
-  return ari_max
+  return ari_median
 
 def mutate(individual):
     gene = random.randint(0,9) #select which parameter to mutate
@@ -221,11 +221,11 @@ creator.create("Individual", list, fitness=creator.FitnessMax)
 
 # Possible parameter values
 sil_max = 1.0
-sil_min = 0.2
-dbs_max = 2.0
-dbs_min = 0.2
+sil_min = 0.0
+dbs_max = 3.0
+dbs_min = 0.0
 contamination_min = 0
-contamination_max = 0.3 
+contamination_max = 0.5 
 
 toolbox.register("attr_sil_max", random.uniform, sil_min, sil_max)
 toolbox.register("attr_sil_min", random.uniform, sil_min, sil_max)
@@ -246,10 +246,10 @@ toolbox.register("mutate",mutate)
 toolbox.register("select", tools.selTournament, tournsize=2)
 toolbox.register("evaluate", evaluate)
 
-population_size = 150
+population_size = 200
 crossover_probability = 0.7
-mutation_probability = 0.2
-number_of_generations = 35
+mutation_probability = 0.25
+number_of_generations = 40
 
 pop = toolbox.population(n=population_size)
 hof = tools.HallOfFame(1)
@@ -259,7 +259,7 @@ stats.register("std", np.std)
 stats.register("min", np.min)
 stats.register("max", np.max)
 
-for SEED in np.arange(1,20):
+for SEED in np.arange(1,40):
 
     def get_SEED():
         return SEED
@@ -272,7 +272,7 @@ for SEED in np.arange(1,20):
     print(">>>>>>>>>>>>>>>>>>>>",get_SEED())
  
     #run["name"] = "GA_seed"+str(get_SEED())+"_sil_"+str(round(sil_min,2))+"_"+str(sil_max)+"_dbs_"+str(round(dbs_min,2))+"_"+str(round(dbs_max,2))+"_pop_"+str(round(population_size,2)+"_gen_"+str(round(number_of_generations)))
-    run["sys/tags"].add("ari_max")
+    run["sys/tags"].add("ari_median_wide_range")
     run["seed"] = get_SEED()
     run["population_size"] = population_size
     run["crossover_probability"] = crossover_probability
